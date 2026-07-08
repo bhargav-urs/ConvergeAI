@@ -2,11 +2,34 @@
 
 > **Multiple AI minds. One trusted answer.**
 
+[![CI](https://github.com/bhargav-urs/ConvergeAI/actions/workflows/ci.yml/badge.svg)](https://github.com/bhargav-urs/ConvergeAI/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Java 21](https://img.shields.io/badge/Java-21-orange.svg)
+![Spring Boot 3](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F.svg)
+![React 18](https://img.shields.io/badge/React-18-61DAFB.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6.svg)
+![pgvector](https://img.shields.io/badge/PostgreSQL-pgvector-336791.svg)
+
 ConvergeAI is a document-grounded **multi-agent AI debate platform**. Upload a PDF and ask a
 question — instead of trusting a single LLM, a structured RAG pipeline retrieves the relevant
 context and **three independent AI agents debate the answer**: they answer, cross-critique each
 other, revise under pressure, and converge on a consensus with a calibrated confidence score.
 Every stage streams live to the browser over STOMP WebSockets.
+
+## Screenshots
+
+**Landing** — the product overview and the three-agent debate panel.
+
+![Landing page](docs/screenshots/01-landing.png)
+
+**Workspace** — three-panel RAG workspace: document library, chat, and the live debate pipeline
+streaming every stage (retrieval → 3 rounds → consensus) with per-agent answers and citations.
+
+![Debate workspace](docs/screenshots/02-workspace.png)
+
+**Dashboard** — history and analytics, including per-agent answer-stability under critique.
+
+![Analytics dashboard](docs/screenshots/03-dashboard.png)
 
 ## Why
 
@@ -71,8 +94,9 @@ The consensus engine (Llama 3.3) merges the revised answers into strict JSON:
 - **Database** — PostgreSQL + pgvector (HNSW index, cosine distance). Works with Neon free tier.
 - **Frontend** — React 18, TypeScript (strict), Vite, Tailwind CSS + shadcn-style components,
   Zustand (live debate state machine), TanStack Query (server state), `@stomp/stompjs` + SockJS.
-- **AI access** — OpenRouter free-tier models only, with retry/backoff and graceful
-  degradation (a failing agent degrades the debate instead of aborting it).
+- **AI access** — multi-provider routing over the OpenAI-compatible chat API: each agent hits a
+  fast free-tier provider (Groq / Cerebras / Gemini) first and falls back to the OpenRouter pool,
+  with retry/backoff, `Retry-After` handling, and graceful per-agent degradation.
 
 ## Getting started (local)
 
@@ -188,3 +212,7 @@ frontend/
   src/hooks/     React Query + WebSocket hooks
   src/components/  ui primitives, workspace (3-panel), dashboard, landing
 ```
+
+## License
+
+Released under the [MIT License](LICENSE).
