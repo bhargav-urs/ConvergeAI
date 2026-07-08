@@ -31,6 +31,39 @@ streaming every stage (retrieval → 3 rounds → consensus) with per-agent answ
 
 ![Analytics dashboard](docs/screenshots/03-dashboard.png)
 
+## Features
+
+- **Multi-agent debate.** Three different LLMs (not three copies of one) answer independently,
+  critique each other against the source text, and revise before a consensus step.
+- **Grounded answers with citations.** Every claim points back to a `[Chunk n]` from your
+  document, and if the answer isn't in the document the agents say so instead of guessing.
+- **Confidence and disagreement.** The final answer comes with a 0–100 confidence score and
+  explicit lists of where the agents agreed and disagreed.
+- **Live pipeline view.** Retrieval and every debate round stream to the browser over WebSockets
+  as they happen, not after the fact.
+- **Free local embeddings.** Documents are embedded in-process with a quantized ONNX model, so
+  indexing costs nothing and stays private.
+- **Vector search inside Postgres.** pgvector with an HNSW index keeps vectors and relational
+  data in one database.
+- **Fast and Normal modes.** Run the full three-round debate, or a quick single-round mode when
+  you just need a fast answer.
+- **Resilient LLM layer.** Per-agent provider failover, retry with backoff, and graceful
+  degradation when a model fails or gets rate-limited.
+
+## Table of contents
+
+- [Features](#features)
+- [Why](#why)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Getting started (local)](#getting-started-local)
+- [API surface](#api-surface)
+- [Design decisions worth knowing](#design-decisions-worth-knowing)
+- [Deployment (free tier)](#deployment-free-tier)
+- [Testing](#testing)
+- [Project layout](#project-layout)
+- [License](#license)
+
 ## Why
 
 Single-model RAG hallucinates: one LLM interpreting your document is one point of failure.
@@ -56,27 +89,24 @@ answer reaches the user — and disagreements are surfaced honestly instead of p
                                           │   R3 revisions → consensus JSON      │
                                           │        │                             │
                                           │        ▼                             │
-                                          │  OpenRouter (free-tier models)       │
-                                          │   DeepSeek-R1 · Qwen 3 · Llama 3.3   │
+                                          │  Groq · Cerebras · Gemini (direct)   │
+                                          │   → OpenRouter pool (fallback)       │
                                           └──────────────────────────────────────┘
 ```
 
 **The debate panel**
 
-| Agent | Default model | Role |
-|---|---|---|
-| The Analyst | `openai/gpt-oss-120b:free` | Deep logical reasoning, step-by-step fact extraction |
-| The Engineer | `qwen/qwen3-next-80b-a3b-instruct:free` | Practical synthesis into a direct, actionable answer |
-| The Reviewer | `meta-llama/llama-3.3-70b-instruct:free` | Adversarial fact-checking against the retrieved context |
+| Agent | Default model | Runs on | Role |
+|---|---|---|---|
+| The Analyst | Gemini 2.5 Flash | Google | Deep logical reasoning, step-by-step fact extraction |
+| The Engineer | GLM-4.7 | Cerebras | Practical synthesis into a direct, actionable answer |
+| The Reviewer | Llama-3.3-70B | Groq | Adversarial fact-checking against the retrieved context |
 
-OpenRouter's free-tier catalog rotates (the brief's DeepSeek-R1 and Qwen3-235B free slots have
-already been retired), so all four model slots are env-overridable without a rebuild.
-
-**Direct fast providers (recommended):** set `GROQ_API_KEY`, `CEREBRAS_API_KEY`, and/or
-`GEMINI_API_KEY` (all free tiers on fast hardware) and each agent routes directly —
-Analyst → Gemini 2.5 Flash, Engineer → GLM-4.7 on Cerebras, Reviewer/Consensus →
-Llama-3.3-70B on Groq — cutting a debate from minutes to well under a minute, still at $0.
-Any missing key silently falls back to the OpenRouter pool.
+Each agent calls its provider directly for speed, and falls back to the OpenRouter free pool if
+that key is missing or the provider is rate-limited. Set `GROQ_API_KEY`, `CEREBRAS_API_KEY`,
+and/or `GEMINI_API_KEY` to enable the direct path (all free tiers); with them a full debate drops
+from a few minutes to well under a minute, still at $0. Every model slot is env-overridable, since
+free-tier catalogs change over time.
 
 **Debate modes:** the chat has a Normal/Fast toggle. Normal runs the full 3-round debate;
 Fast runs one round of concise answers straight into consensus (~3× fewer sequential phases,
