@@ -1,0 +1,112 @@
+spring:
+  application:
+    name: convergeai
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    # Default matches docker-compose's host port mapping (5433 to avoid clashing
+    # with a natively installed PostgreSQL on 5432).
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/convergeai}
+    username: ${DATABASE_USERNAME:converge}
+    password: ${DATABASE_PASSWORD:converge}
+    hikari:
+      # Neon free tier allows a small connection budget; keep the pool modest.
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      connection-timeout: 30000
+  jpa:
+    # Flyway owns the schema; Hibernate never mutates or validates DDL.
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+  flyway:
+    enabled: true
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+converge:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  ingestion:
+    # ~500 tokens / ~50 token overlap for English prose, expressed in characters.
+    chunk-size-chars: 2000
+    chunk-overlap-chars: 200
+    allowed-extensions: pdf,txt,md
+    embedding-batch-size: 16
+  retrieval:
+    top-k: 5
+
+# Direct fast providers (free tiers on fast hardware). Each agent routes to its
+# direct provider first and falls back to the OpenRouter free pool automatically
+# when the key is missing or the provider fails — so any subset of keys works.
+llm:
+  direct:
+    providers:
+      groq:
+        base-url: https://api.groq.com/openai/v1
+        api-key: ${GROQ_API_KEY:}
+      cerebras:
+        base-url: https://api.cerebras.ai/v1
+        api-key: ${CEREBRAS_API_KEY:}
+      gemini:
+        base-url: https://generativelanguage.googleapis.com/v1beta/openai
+        api-key: ${GEMINI_API_KEY:}
+    routes:
+      analyst:
+        provider: gemini
+        model: ${DIRECT_MODEL_ANALYST:gemini-2.5-flash}
+      engineer:
+        provider: cerebras
+        model: ${DIRECT_MODEL_ENGINEER:zai-glm-4.7}
+      reviewer:
+        provider: groq
+        model: ${DIRECT_MODEL_REVIEWER:llama-3.3-70b-versatile}
+      consensus:
+        provider: groq
+        model: ${DIRECT_MODEL_CONSENSUS:llama-3.3-70b-versatile}
+
+openrouter:
+  api-key: ${OPENROUTER_API_KEY:}
+  base-url: https://openrouter.ai/api/v1
+  referer: ${OPENROUTER_REFERER:https://github.com/convergeai}
+  app-title: ConvergeAI
+  request-timeout-seconds: 180
+  max-retries: 3
+  temperature: 0.3
+  # Reasoning models spend tokens thinking before answering; a small budget
+  # truncates them mid-thought and the real answer never arrives.
+  max-tokens: 4096
+  models:
+    # All free-tier models, verified against the OpenRouter catalog. Free-tier
+    # availability rotates — override via env without a rebuild if a model 404s.
+    analyst: ${MODEL_ANALYST:openai/gpt-oss-120b:free}
+    engineer: ${MODEL_ENGINEER:qwen/qwen3-next-80b-a3b-instruct:free}
+    reviewer: ${MODEL_REVIEWER:meta-llama/llama-3.3-70b-instruct:free}
+    consensus: ${MODEL_CONSENSUS:meta-llama/llama-3.3-70b-instruct:free}
+  # OpenRouter fallback routing: tried in order when an agent's primary model is
+  # rate-limited or unavailable. The debate records which model actually answered.
+  fallback-models: ${MODEL_FALLBACKS:nvidia/nemotron-3-super-120b-a12b:free,openai/gpt-oss-20b:free,google/gemma-4-31b-it:free,tencent/hy3:free}
+
+logging:
+  level:
+    com.convergeai: INFO

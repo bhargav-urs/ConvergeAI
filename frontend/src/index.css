@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 25% 98%;
+    --foreground: 224 40% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 40% 12%;
+    --primary: 243 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 94%;
+    --secondary-foreground: 224 30% 20%;
+    --muted: 220 20% 94%;
+    --muted-foreground: 224 12% 45%;
+    --accent: 243 60% 96%;
+    --accent-foreground: 243 60% 35%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 16% 88%;
+    --input: 220 16% 86%;
+    --ring: 243 70% 55%;
+    --radius: 0.625rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+}
+
+/* Markdown rendering inside agent/consensus bubbles */
+.prose-chat {
+  @apply text-sm leading-relaxed;
+}
+.prose-chat p {
+  @apply mb-2 last:mb-0;
+}
+.prose-chat ul,
+.prose-chat ol {
+  @apply mb-2 ml-5 space-y-1;
+}
+.prose-chat ul {
+  @apply list-disc;
+}
+.prose-chat ol {
+  @apply list-decimal;
+}
+.prose-chat h1,
+.prose-chat h2,
+.prose-chat h3,
+.prose-chat h4 {
+  @apply mb-1.5 mt-3 font-semibold first:mt-0;
+}
+.prose-chat code {
+  @apply rounded bg-muted px-1 py-0.5 text-[0.85em];
+}
+.prose-chat pre {
+  @apply mb-2 overflow-x-auto rounded-md bg-muted p-3;
+}
+.prose-chat blockquote {
+  @apply mb-2 border-l-2 border-primary/40 pl-3 italic text-muted-foreground;
+}
+.prose-chat strong {
+  @apply font-semibold;
+}
+.prose-chat a {
+  @apply text-primary underline;
+}
+.prose-chat table {
+  @apply mb-2 w-full border-collapse text-xs;
+}
+.prose-chat th,
+.prose-chat td {
+  @apply border border-border px-2 py-1 text-left;
+}
